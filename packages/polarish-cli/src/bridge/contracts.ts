@@ -177,6 +177,18 @@ type ApprovalRequest = {
 };
 
 /**
+ * This is the optional token and cost usage reported by a provider for one run.
+ */
+export type UnifiedUsageType = {
+	inputTokens?: number;
+	outputTokens?: number;
+	cacheReadInputTokens?: number;
+	cacheCreationInputTokens?: number;
+	totalCostUsd?: number;
+	rawUsage?: unknown;
+};
+
+/**
  * This is the finish reason enum used by the unified response.
  */
 export type ResponseFinishReasonType =
@@ -208,6 +220,7 @@ export type UnifiedResponseType = {
 		provider: AppRequestShapeType["provider"];
 		requestId?: string;
 		model?: string;
+		usage?: UnifiedUsageType;
 	};
 	warnings: string[];
 	errorMessage?: string;
