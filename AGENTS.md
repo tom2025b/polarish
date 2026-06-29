@@ -1,17 +1,17 @@
-## about
+## About
 
-Polarish is a open-source SDK for building AI workflows where users bring their own AI subscriptions
+Polarish is an open-source SDK for building AI workflows where users bring their own AI subscriptions.
 
-- It has two parts that work in tandam to work 
-- @package/ai - it is a ai-sdk that help you to build ai workflows
-- @polarish/cli - the cli help users to connect their ai subs , bridge run those complex workflows
+- It has two parts that work in tandem:
+- `@polarish/ai` — an AI SDK that helps you build AI workflows.
+- `@polarish/cli` — the CLI that helps users connect their AI subscriptions and bridges those complex workflows.
 
-## Rule
+## Rules
 
-- Alway run the typecheck and the lint command on evey file that you edit 
-- Alway add the Jsdocs commet to the new function or the types or schema that you have created while writing the commets , keep the language simple and like this function does this and this is the shape of the request that we are expecting
-- Alway use bun not npm or pnpm
-- When writing the plan to edit or change file , i suggest you to first read those particualr files so that you actaully know what is the current state they are in so you can plan thing better , instead of assuming thing
+- Always run the typecheck and lint commands on every file that you edit.
+- Always add JSDoc comments to any new function, type, or schema that you create. Keep the language simple, like "this function does this" and "this is the shape of the request that we are expecting".
+- Always use bun, not npm or pnpm.
+- When planning to edit or change a file, first read that file so you actually know its current state and can plan better, instead of assuming things.
 
 ## Core Priorities
 
@@ -23,4 +23,4 @@ If a tradeoff is required, choose correctness and robustness over short-term con
 
 ## Maintainability
 
-Long term maintainability is a core priority. If you add new functionality, first check if there is shared logic that can be extracted to a separate module. Duplicate logic across multiple files is a code smell and should be avoided. Don't be afraid to change existing code. Don't take shortcuts by just adding local logic to solve a problem.
+Long-term maintainability is a core priority. If you add new functionality, first check if there is shared logic that can be extracted to a separate module. Duplicate logic across multiple files is a code smell and should be avoided. Don't be afraid to change existing code. Don't take shortcuts by just adding local logic to solve a problem.

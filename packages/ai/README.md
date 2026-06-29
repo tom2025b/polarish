@@ -1,6 +1,6 @@
 # @polarish/ai
 
-Polarish is open-source SDK for AI workflows where users bring their own AI subscriptions.
+Polarish is an open-source SDK for AI workflows where users bring their own AI subscriptions.
 
 Two packages work together:
 
