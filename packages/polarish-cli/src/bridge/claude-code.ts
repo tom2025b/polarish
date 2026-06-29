@@ -8,6 +8,7 @@ import {
 	type UnifiedGenerateResultType,
 	type UnifiedResponseStreamingResultType,
 	type UnifiedStreamEventPayload,
+	type UnifiedUsageType,
 	createUnifiedResponseStream,
 	unifiedResponseForStreamError,
 } from "./contracts.js";
@@ -64,6 +65,7 @@ type ClaudeRunState = {
 	runStatus: "in_progress" | "completed" | "failed" | "aborted";
 	sessionId?: string;
 	started: boolean;
+	usage?: UnifiedUsageType;
 	warnings: string[];
 };
 
@@ -246,6 +248,7 @@ export async function executeClaudeCode(
 					provider: request.provider,
 					...(state.sessionId ? { requestId: state.sessionId } : {}),
 					model: request.model,
+					...(state.usage ? { usage: state.usage } : {}),
 				},
 			},
 		});
@@ -481,10 +484,59 @@ function handleClaudeJsonLine(
 	}
 
 	if (lineType === "result") {
+		state.sessionId = getString(line, "session_id") ?? state.sessionId;
+		const usage = extractClaudeUsage(line);
+		if (usage) {
+			state.usage = usage;
+		}
+
+		// Claude Code closes every run with a `result` line, but the run may have
+		// failed: `subtype` is `success`, `error_max_turns`, or `error_during_execution`,
+		// and `is_error` flags non-success results. Treat a hit turn limit as a
+		// truncation (we keep whatever content streamed) and any other error as a
+		// hard failure so the bridge does not report a broken run as a clean stop.
+		const subtype = getString(line, "subtype");
+		const isErrorResult =
+			line.is_error === true ||
+			(subtype !== undefined && subtype !== "success");
+
+		const resultText = getString(line, "result");
+
+		if (isErrorResult) {
+			if (subtype === "error_max_turns") {
+				state.runStatus = "completed";
+				state.finishReason = "length";
+				if (resultText && getFinalText(state).length === 0) {
+					state.blocks.set(0, { kind: "text", text: resultText });
+				}
+				state.warnings.push(
+					"Claude Code stopped because it reached its turn limit; the response may be incomplete.",
+				);
+				return;
+			}
+
+			state.runStatus = "failed";
+			state.finishReason = "error";
+			state.errorMessage =
+				resultText ??
+				getString(line, "error") ??
+				(subtype
+					? `Claude Code ended with result subtype \`${subtype}\`.`
+					: "Claude Code reported an error result.");
+			throw new BridgeError({
+				status: 502,
+				code: "claude_code_execution_failed",
+				message: "Claude Code finished with an error result.",
+				detail: state.errorMessage,
+				metadata: {
+					provider: request.provider,
+					...(subtype ? { subtype } : {}),
+				},
+			});
+		}
+
 		state.runStatus = "completed";
 		state.finishReason = "stop";
-		state.sessionId = getString(line, "session_id") ?? state.sessionId;
-		const resultText = getString(line, "result");
 		if (resultText && getFinalText(state).length === 0) {
 			state.blocks.set(0, { kind: "text", text: resultText });
 		}
@@ -835,6 +887,7 @@ function toUnifiedResponse(
 			provider: request.provider,
 			...(state.sessionId ? { requestId: state.sessionId } : {}),
 			model: request.model,
+			...(state.usage ? { usage: state.usage } : {}),
 		},
 		warnings: state.warnings,
 		...(state.errorMessage ? { errorMessage: state.errorMessage } : {}),
@@ -926,6 +979,60 @@ function toDoneReason(finishReason: ResponseFinishReasonType) {
 		return "toolUse" as const;
 	}
 	return "stop" as const;
+}
+
+/**
+ * This reads the token and cost usage from one Claude Code `result` line.
+ *
+ * Claude Code reports `total_cost_usd` at the top level of the result line and a
+ * nested `usage` object (Anthropic snake_case token counts). We normalize the
+ * fields we care about and keep the raw object under `rawUsage` for callers that
+ * need provider-specific details.
+ */
+function extractClaudeUsage(
+	line: Record<string, unknown>,
+): UnifiedUsageType | undefined {
+	const usageRecord = isRecord(line.usage) ? line.usage : undefined;
+	const totalCostUsd = getNumber(line, "total_cost_usd");
+
+	if (!usageRecord && totalCostUsd === undefined) {
+		return undefined;
+	}
+
+	const usage: UnifiedUsageType = {};
+
+	if (usageRecord) {
+		const inputTokens = getNumber(usageRecord, "input_tokens");
+		const outputTokens = getNumber(usageRecord, "output_tokens");
+		const cacheReadInputTokens = getNumber(
+			usageRecord,
+			"cache_read_input_tokens",
+		);
+		const cacheCreationInputTokens = getNumber(
+			usageRecord,
+			"cache_creation_input_tokens",
+		);
+
+		if (inputTokens !== undefined) {
+			usage.inputTokens = inputTokens;
+		}
+		if (outputTokens !== undefined) {
+			usage.outputTokens = outputTokens;
+		}
+		if (cacheReadInputTokens !== undefined) {
+			usage.cacheReadInputTokens = cacheReadInputTokens;
+		}
+		if (cacheCreationInputTokens !== undefined) {
+			usage.cacheCreationInputTokens = cacheCreationInputTokens;
+		}
+		usage.rawUsage = usageRecord;
+	}
+
+	if (totalCostUsd !== undefined) {
+		usage.totalCostUsd = totalCostUsd;
+	}
+
+	return usage;
 }
 
 /**
