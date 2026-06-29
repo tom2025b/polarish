@@ -3,26 +3,16 @@
 	"version": "0.1.2",
 	"description": "Polarish CLI — configure and run the local AI bridge",
 	"type": "module",
-	"homepage": "https://github.com/maker-or/polarish",
+	"homepage": "https://github.com/tom2025b/polarish",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/maker-or/polarish"
+		"url": "https://github.com/tom2025b/polarish"
 	},
 	"bugs": {
-		"url": "https://github.com/maker-or/polarish/issues"
+		"url": "https://github.com/tom2025b/polarish/issues"
 	},
-	"keywords": [
-		"cli",
-		"polarish",
-		"ai",
-		"openai",
-		"codex"
-	],
-	"files": [
-		"bin",
-		"dist",
-		"public"
-	],
+	"keywords": ["cli", "polarish", "ai", "openai", "codex"],
+	"files": ["bin", "dist", "public"],
 	"bin": {
 		"polarish": "./bin/run.js"
 	},
